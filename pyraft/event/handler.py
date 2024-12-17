@@ -1,6 +1,6 @@
 from typing import Protocol
 
-from pyraft.node.messages import AppendEntriesMessage, AppendEntriesResponse, RequestVoteMessage, RequestVoteResponse
+from pyraft.node.messages import AppendEntriesMessage, AppendEntriesResponse, ClientMessage, ClientResponse, RaftMessage, RequestVoteMessage, RequestVoteResponse
 
 
 class EventHandler(Protocol):
@@ -13,5 +13,8 @@ class EventHandler(Protocol):
     async def handle_terminal(self, string: str) -> None: ...
 
     # Messages
+    async def on_raft_message(self, msg: RaftMessage) -> None: ...
+
     async def handle_append_entries(self, msg: AppendEntriesMessage) -> AppendEntriesResponse: ...
     async def handle_request_vote(self, msg: RequestVoteMessage) -> RequestVoteResponse: ...
+    async def handle_client_message(self, msg: ClientMessage) -> ClientResponse: ...

@@ -2,11 +2,16 @@ import asyncio
 import json
 from types import SimpleNamespace
 from typing import overload
+
+from pydantic import RootModel
 from pyraft.event import EventHandler
 from pyraft.node.messages import (
     AppendEntriesMessage,
     AppendEntriesResponse,
+    BaseMessage,
+    ClientMessage,
     MessageType,
+    RaftMessage,
     RequestVoteMessage,
     RequestVoteResponse,
     TimeoutResponse,
@@ -31,17 +36,28 @@ class EventManager:
         self._event_handler = event_handler
 
     async def message_callback(self, message: str) -> str:
-        obj = json.loads(message, object_hook=lambda d: SimpleNamespace(**d))
+        obj = BaseMessage.model_validate_json(message) 
+        # obj = json.loads(message, object_hook=lambda d: SimpleNamespace(**d))
+
+        if obj.msg_type != MessageType.CLIENT_MESSAGE:
+            obj = RaftMessage.model_validate_json(message)
+            await self._event_handler.on_raft_message(obj)
 
         match obj.msg_type:
             case MessageType.APPEND_ENTRIES:
+                obj = AppendEntriesMessage.model_validate_json(message)
                 response = await self._event_handler.handle_append_entries(obj)
             case MessageType.REQUEST_VOTE:
+                obj = RequestVoteMessage.model_validate_json(message)
                 response = await self._event_handler.handle_request_vote(obj)
+            case MessageType.CLIENT_MESSAGE:
+                obj = ClientMessage.model_validate_json(message)
+                response = await self._event_handler.handle_client_message(obj)
             case _:
                 raise RuntimeError("Unknown message:" + str(obj))
 
-        return json.dumps(response.__dict__)
+        return response.model_dump_json()
+        #return json.dumps(response, cls=MessageEncoder)
 
     @overload
     async def send_message(
@@ -52,17 +68,18 @@ class EventManager:
         self, host: str, port: int, message: RequestVoteMessage
     ) -> RequestVoteResponse | TimeoutResponse: ...
 
-    async def send_message(self, host: str, port: int, message):
+    async def send_message(self, host: str, port: int, message: RaftMessage):
         try:
             response = await self._send_plain_message_with_timeout(
-                host, port, json.dumps(message.__dict__)
+                host, port, message.model_dump_json()
             )
 
             obj = json.loads(response, object_hook=lambda d: SimpleNamespace(**d))
         except TimeoutError:
-            obj = TimeoutResponse()
+           obj = TimeoutResponse()
         except:
-            obj = TimeoutResponse()
+            raise
+        #    obj = TimeoutResponse()
 
         return obj
 
@@ -77,11 +94,11 @@ class EventManager:
         self, host: str, port: int, message: str
     ) -> str:
         try:
-            print(f"Send message to {host}:{port}")
+            # print(f"Send message to {host}:{port}")
             async with asyncio.timeout(1):
                 return await self._transport.send_message(host, port, message)
         except TimeoutError:
-            print(f"Cannot reach {host}:{port}")
+            # print(f"Cannot reach {host}:{port}")
             raise
 
     async def heartbeat_loop(self):

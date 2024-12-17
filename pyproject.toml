@@ -13,10 +13,12 @@ packages = [
 ]
 
 [tool.poetry.scripts]
-pyraft = 'pyraft.main:main'
+pyraft-client = "pyraft.client.main:main"
+pyraft-server = "pyraft.server.main:main"
 
 [tool.poetry.dependencies]
 python = "^3.12"
+pydantic = "2.10.3"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

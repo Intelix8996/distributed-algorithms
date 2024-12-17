@@ -1,43 +1,75 @@
-from dataclasses import dataclass
 from enum import StrEnum
+
+from pydantic import BaseModel
+
+from pyraft.commands.types import DeleteCommand, SetCommand, StateMachineCommand
 
 
 class MessageType(StrEnum):
     APPEND_ENTRIES = "append_entries"
     REQUEST_VOTE = "request_vote"
+    CLIENT_MESSAGE = "client_message"
 
 
-@dataclass
-class BaseMessage:
+class BaseMessage(BaseModel):
     msg_type: MessageType
-    sender: str
+    """Type of a message"""
+
+
+class RaftMessage(BaseMessage):
     sender_term: int
+    """Senders's term"""
+
+    sender_id: str
+    """Sender identifier"""
+
+    prev_log_index: int
+    prev_log_term: int
 
 
-@dataclass
-class RequestVoteMessage(BaseMessage):
-    msg_type = MessageType.REQUEST_VOTE
+class RequestVoteMessage(RaftMessage):
+    msg_type: MessageType = MessageType.REQUEST_VOTE
 
 
-@dataclass
-class AppendEntriesMessage(BaseMessage):
-    msg_type = MessageType.APPEND_ENTRIES
+class AppendEntriesMessage(RaftMessage):
+    msg_type: MessageType = MessageType.APPEND_ENTRIES
 
-    entries: list
+    entries: list[tuple[int, SetCommand | DeleteCommand]]
+    """Entries to append (Empty for heartbeat)"""
+
+    leader_commit: int
+    """Leader's commit index"""
 
 
-@dataclass
-class BaseResponse: ...
+class ClientMessage(BaseMessage):
+    msg_type: MessageType = MessageType.CLIENT_MESSAGE
+
+    text: str
+    """Textual message from client"""
 
 
-@dataclass
+class BaseResponse(BaseModel): ...
+
+
 class RequestVoteResponse(BaseResponse):
-    vote: bool
+    term: int
+    """Current term (for candidate to update itself)"""
+
+    vote_granted: bool
+    """Vote result"""
 
 
-@dataclass
-class AppendEntriesResponse(BaseResponse): ...
+class AppendEntriesResponse(BaseResponse):
+    term: int
+    """Current term (for leader to update itself)"""
+
+    success: bool
+    """ Whether follower contained entry matching"""
 
 
-@dataclass
+class ClientResponse(BaseResponse):
+    text: str
+    """Textual response for client"""
+
+
 class TimeoutResponse(BaseResponse): ...

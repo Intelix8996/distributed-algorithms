@@ -22,6 +22,9 @@ class NodeConifg:
     
     def get_other_nodes(self, name: str) -> list[NodeInfo]:
         return [ node_info for node_name, node_info in self.nodes.items() if node_name != name ]
+    
+    def get_node_count(self) -> int:
+        return len(self.nodes)
 
 
 CONFIG_ADDRESS_ENTRY = "addr"
