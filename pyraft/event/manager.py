@@ -18,6 +18,8 @@ from pyraft.node.messages import (
 )
 from pyraft.transport.socket import MessageTransport
 
+SEND_TIMEOUT = 0.5
+
 
 class EventManager:
     def __init__(
@@ -36,7 +38,7 @@ class EventManager:
         self._event_handler = event_handler
 
     async def message_callback(self, message: str) -> str:
-        obj = BaseMessage.model_validate_json(message) 
+        obj = BaseMessage.model_validate_json(message)
         # obj = json.loads(message, object_hook=lambda d: SimpleNamespace(**d))
 
         if obj.msg_type != MessageType.CLIENT_MESSAGE:
@@ -57,7 +59,7 @@ class EventManager:
                 raise RuntimeError("Unknown message:" + str(obj))
 
         return response.model_dump_json()
-        #return json.dumps(response, cls=MessageEncoder)
+        # return json.dumps(response, cls=MessageEncoder)
 
     @overload
     async def send_message(
@@ -76,7 +78,7 @@ class EventManager:
 
             obj = json.loads(response, object_hook=lambda d: SimpleNamespace(**d))
         except TimeoutError:
-           obj = TimeoutResponse()
+            obj = TimeoutResponse()
         except:
             raise
         #    obj = TimeoutResponse()
@@ -95,7 +97,7 @@ class EventManager:
     ) -> str:
         try:
             # print(f"Send message to {host}:{port}")
-            async with asyncio.timeout(1):
+            async with asyncio.timeout(SEND_TIMEOUT):
                 return await self._transport.send_message(host, port, message)
         except TimeoutError:
             # print(f"Cannot reach {host}:{port}")
