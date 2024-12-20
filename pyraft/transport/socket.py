@@ -4,11 +4,17 @@ from pyraft.transport.base import MessageTransport
 
 MAX_MSG_LEN = 4096
 
+async def infinite_loop():
+    while True:
+        await asyncio.sleep(1)
 
 class SocketMessageTransport(MessageTransport):
 
     async def send_message(self, host: str, port: int, msg: str) -> str:
-        reader, writer = await asyncio.open_connection(host, port)
+        try:
+            reader, writer = await asyncio.open_connection(host, port)
+        except:
+            await infinite_loop()
 
         # print(f"Send: {msg!r}")
         writer.write(msg.encode())
