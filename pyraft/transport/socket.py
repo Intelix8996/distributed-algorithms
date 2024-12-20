@@ -11,10 +11,14 @@ async def infinite_loop():
 class SocketMessageTransport(MessageTransport):
 
     async def send_message(self, host: str, port: int, msg: str) -> str:
-        try:
-            reader, writer = await asyncio.open_connection(host, port)
-        except:
-            await infinite_loop()
+        # Linux
+        # try:
+        #     reader, writer = await asyncio.open_connection(host, port)
+        # except:
+        #     await infinite_loop()
+
+        # Windows
+        reader, writer = await asyncio.open_connection(host, port)
 
         # print(f"Send: {msg!r}")
         writer.write(msg.encode())
