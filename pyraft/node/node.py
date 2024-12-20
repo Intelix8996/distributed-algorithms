@@ -210,7 +210,7 @@ class Node:
     # Node timeouts
     async def heartbeat_timeout_elapsed(self) -> None:
         print(
-            f"S: {self._storage} L: {self._log._log} CI: {self._commit_index} LA: {self._last_applied}"
+            f"T: {self._current_term} S: {self._storage} L: {self._log._log} CI: {self._commit_index} LA: {self._last_applied}"
         )
 
         if self._commit_index > self._last_applied:
@@ -303,9 +303,10 @@ class Node:
     async def on_raft_message(self, msg: RaftMessage) -> None:
         self._event_handler.reschedule_election_timeout()
 
-        if msg.sender_term > self._current_term and self._state != NodeState.FOLLOWER:
-            # self.become_follower(msg.sender_term, None)
-            self.become_follower(self._current_term, None)
+        # and self._state != NodeState.FOLLOWER
+        if msg.sender_term > self._current_term:
+            self.become_follower(msg.sender_term, None)
+            # self.become_follower(self._current_term, None)
 
     async def handle_append_entries(
         self, msg: AppendEntriesMessage
@@ -352,7 +353,8 @@ class Node:
         return AppendEntriesResponse(term=self._current_term, success=True)
 
     async def handle_request_vote(self, msg: RequestVoteMessage) -> RequestVoteResponse:
-        if msg.sender_term > self._current_term and self._voted_for is None:
+        # if msg.sender_term > self._current_term and self._voted_for is None:
+        if self._voted_for is None or self._voted_for == self._name:
             self._current_term = msg.sender_term
             self._voted_for = msg.sender_id
             print(f"Vote for {msg.sender_id}")

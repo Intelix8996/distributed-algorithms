@@ -1,5 +1,6 @@
 import asyncio
 import json
+import random
 from types import SimpleNamespace
 from typing import overload
 
@@ -18,15 +19,15 @@ from pyraft.node.messages import (
 )
 from pyraft.transport.socket import MessageTransport
 
-SEND_TIMEOUT = 0.5
+SEND_TIMEOUT = 0.05
 
 
 class EventManager:
     def __init__(
         self,
         transport: MessageTransport,
-        heartbeat_timeout: int = 1,
-        election_timeout: int = 5,
+        heartbeat_timeout: int = .1,
+        election_timeout: int = .5,
     ) -> None:
         self._transport = transport
         self._transport.register_message_callback(self.message_callback)
@@ -134,7 +135,7 @@ class EventManager:
             self._election_timeout_manager
             and not self._election_timeout_manager.expired()
         ):
-            new_timeout = asyncio.get_running_loop().time() + self._election_timeout
+            new_timeout = asyncio.get_running_loop().time() + random.uniform(.5, .8)
             self._election_timeout_manager.reschedule(new_timeout)
 
     async def input_loop(self):
