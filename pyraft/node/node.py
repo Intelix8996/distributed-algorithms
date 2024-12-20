@@ -210,7 +210,7 @@ class Node:
     # Node timeouts
     async def heartbeat_timeout_elapsed(self) -> None:
         print(
-            f"T: {self._current_term} S: {self._storage} L: {self._log._log} CI: {self._commit_index} LA: {self._last_applied}"
+            f"STA: {self._state} T: {self._current_term} S: {self._storage} L: {self._log._log} CI: {self._commit_index} LA: {self._last_applied}"
         )
 
         if self._commit_index > self._last_applied:
@@ -333,15 +333,7 @@ class Node:
 
         # 3, 4
         for term, entry in msg.entries:
-            if len(self._log) > msg.prev_log_index + 1 and (
-                (log_entry := self._log.get(msg.prev_log_index + 1)) is not None
-            ):
-                log_term, _ = log_entry
-                if log_term != term:
-                    self._log.truncate(msg.prev_log_index + 1)
-                    self._log.append(term, entry)
-            else:
-                self._log.append(term, entry)
+            self._log.append(term, entry)
             print(f"Add {entry} to log on follower")
 
         # 5
@@ -423,9 +415,14 @@ class Node:
                         )
 
             case NodeState.CANDIDATE:
-                return ClientResponse(
-                    text="Can't process request: Node is in a candidate state"
-                )
+                match cmd:
+                    case QueryCommand(key):
+                        return ClientResponse(text=str(self._storage.query(key)))
+
+                    case _:
+                        return ClientResponse(
+                            text="Can't process request: Node is in a candidate state"
+                        )
 
             case NodeState.LEADER:
                 return await self._execute_client_command(cmd)
